@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model TherapySession {
+  id           Int    @id @default(autoincrement())
+  sessionDate String @map("session_date")
+  title        String
+  date         String
+  mode         String
+  duration     String
+
+  @@map("therapy_sessions")
+}
