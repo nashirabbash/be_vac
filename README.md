@@ -17,7 +17,7 @@ bun install
 
 Create a `.env` file with your database connection string:
 
-```
+```env
 DATABASE_URL="postgresql://user:password@localhost:5432/be_vac"
 ```
 
@@ -46,7 +46,7 @@ bun test --coverage
 
 ## Project structure
 
-```
+```text
 src/
   routes/     HTTP handlers, request validation
   services/   Business logic, Prisma DB calls
