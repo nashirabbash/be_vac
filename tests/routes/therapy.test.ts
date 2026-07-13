@@ -1,16 +1,9 @@
 import { describe, expect, it, mock, beforeEach, beforeAll } from "bun:test";
-import { SignJWT } from "jose";
 import { Elysia } from "elysia";
 import { therapyRoutes } from "../../src/routes/therapy";
+import { mockPrisma, generateTestToken } from "../utils";
 
 process.env.JWT_SECRET = "test-secret";
-const secret = new TextEncoder().encode("test-secret");
-
-async function generateTestToken(payload: Record<string, unknown>) {
-  return await new SignJWT(payload)
-    .setProtectedHeader({ alg: "HS256" })
-    .sign(secret);
-}
 
 let validToken = "";
 let noDeviceToken = "";
@@ -27,16 +20,6 @@ beforeAll(async () => {
   validToken = await generateTestToken({ userId: 1, deviceId: 2, username: "testuser" });
   noDeviceToken = await generateTestToken({ userId: 1, deviceId: null, username: "testuser" });
 });
-
-const mockPrisma = {
-  history: {
-    create: mock((args: { data: Record<string, unknown> }) => ({
-      id: 1,
-      ...args.data,
-    })),
-    findMany: mock(() => []),
-  },
-};
 
 mock.module("../../src/db", () => ({
   prisma: mockPrisma,

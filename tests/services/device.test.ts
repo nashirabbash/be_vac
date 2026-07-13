@@ -1,20 +1,6 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test";
 import { changeActiveDevice } from "../../src/services/device";
-
-const mockPrisma = {
-  device: {
-    findUnique: mock(),
-  },
-  trDeviceUser: {
-    updateMany: mock(),
-    create: mock(),
-  },
-  $transaction: mock(async (queries) => {
-    for (const query of queries) {
-      await query;
-    }
-  }),
-};
+import { mockPrisma } from "../utils";
 
 mock.module("../../src/db", () => ({
   prisma: mockPrisma,

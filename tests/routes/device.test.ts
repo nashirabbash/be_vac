@@ -1,28 +1,12 @@
 import { describe, expect, it, mock, beforeEach, beforeAll } from "bun:test";
-import { SignJWT } from "jose";
 import { deviceRoutes } from "../../src/routes/device";
-
-const secret = new TextEncoder().encode("test-secret");
-
-async function generateTestToken(payload: Record<string, unknown>) {
-  return await new SignJWT(payload)
-    .setProtectedHeader({ alg: "HS256" })
-    .sign(secret);
-}
+import { mockPrisma, generateTestToken, secret } from "../utils";
 
 let validToken = "";
 
 beforeAll(async () => {
   validToken = await generateTestToken({ userId: 1, deviceId: 1, username: "testuser" });
 });
-
-const mockPrisma = {
-  device: { findUnique: mock() },
-  trDeviceUser: { updateMany: mock(), create: mock() },
-  $transaction: mock(async (queries) => {
-    for (const query of queries) await query;
-  }),
-};
 
 mock.module("../../src/db", () => ({
   prisma: mockPrisma,
