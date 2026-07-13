@@ -1,12 +1,12 @@
 import { Elysia } from "elysia";
 import { logger } from "../logger";
 
-export const loggerMiddleware = new Elysia({ name: "logger" })
+export const loggerMiddleware = (app: Elysia) => app
   .onStart(({ server }) => {
     logger.info({ server: { hostname: server?.hostname, port: server?.port } }, `Server started at ${server?.hostname}:${server?.port}`);
   })
   .onRequest(({ request }) => {
-    logger.info({ req: request }, `[onRequest] ${request.method} ${request.url}`);
+    logger.info({ req: request }, `[REQUEST] 📥 Masuk: ${request.method} ${request.url}`);
   })
   .onParse(({ request, contentType }) => {
     logger.debug({ contentType }, `[onParse] ${request.method} ${request.url}`);
@@ -23,12 +23,12 @@ export const loggerMiddleware = new Elysia({ name: "logger" })
     const { request, response } = ctx as any;
     logger.debug({ response }, `[onAfterHandle] ${request.method} ${request.url}`);
   })
-  .onAfterResponse(({ request, set }) => {
-    logger.info({ status: set.status || 200, headers: set.headers }, `[onAfterResponse] ${request.method} ${request.url} - Status: ${set.status || 200}`);
+  .onAfterResponse(({ request, response, set }) => {
+    logger.info({ status: set.status || 200, headers: set.headers }, `[RESPONSE] ✅ Selesai: ${request.method} ${request.url} - Status: ${set.status || 200}`);
   })
   .onError(({ request, error, code }) => {
     const errorMsg = error instanceof Error ? error.message : (error as any).message || String(error);
-    logger.error({ err: error, code }, `[onError] ${request.method} ${request.url} - Error: ${errorMsg}`);
+    logger.error({ err: error, code }, `[FAILED] ❌ Gagal: ${request.method} ${request.url} - Error: ${errorMsg}`);
   })
   .onStop(() => {
     logger.info("Server stopped");
