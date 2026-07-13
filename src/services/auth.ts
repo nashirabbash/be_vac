@@ -1,33 +1,16 @@
 import { prisma } from "../db";
-import { resolveQrKeyToIndex } from "../utils/qrResolver";
 
 export interface RegisterUserInput {
   name: string;
   hospitalName: string;
   username: string;
   password: string;
-  qrKey: string;
 }
 
-const INVALID_DEVICE_ERROR = "Invalid qrKey or device is not produced.";
+const INVALID_CRED_ERROR = "Invalid username or password.";
 
 export async function registerUser(data: RegisterUserInput) {
-  const { name, hospitalName, username, password, qrKey } = data;
-
-  const deviceIndex = resolveQrKeyToIndex(qrKey);
-
-  if (!deviceIndex) {
-    throw new Error(INVALID_DEVICE_ERROR);
-  }
-
-  // Validate qrKey by checking if the resolved device ID exists in Device table and isProduced is true
-  const device = await prisma.device.findUnique({
-    where: { id: deviceIndex },
-  });
-
-  if (!device || !device.isProduced) {
-    throw new Error(INVALID_DEVICE_ERROR);
-  }
+  const { name, hospitalName, username, password } = data;
 
   // Hash the password using Bun's built-in bcrypt/argon2 hashing
   const passwordHash = await Bun.password.hash(password);
@@ -41,15 +24,6 @@ export async function registerUser(data: RegisterUserInput) {
     },
   });
 
-  // Create a new TrDeviceUser record linking the new userId and resolved deviceId
-  await prisma.trDeviceUser.create({
-    data: {
-      userId: newUser.id,
-      deviceId: deviceIndex,
-      isActive: true,
-    },
-  });
-
   return { id: newUser.id, username: newUser.username };
 }
 
@@ -57,8 +31,6 @@ export interface LoginUserInput {
   username: string;
   password: string;
 }
-
-const INVALID_CRED_ERROR = "Invalid username or password.";
 
 export async function loginUser(data: LoginUserInput) {
   const { username, password } = data;
@@ -83,13 +55,9 @@ export async function loginUser(data: LoginUserInput) {
     },
   });
 
-  if (!activeDeviceLink) {
-    throw new Error("No active device found for this user.");
-  }
-
   return {
     userId: user.id,
-    deviceId: activeDeviceLink.deviceId,
+    deviceId: activeDeviceLink ? activeDeviceLink.deviceId : null,
     username: user.username,
   };
 }

@@ -2,14 +2,6 @@ import { Elysia, t } from "elysia";
 import { jwt } from "@elysiajs/jwt";
 import { registerUser, loginUser } from "../services/auth";
 
-if (!process.env.JWT_SECRET) {
-  throw new Error("JWT_SECRET environment variable is not defined");
-}
-
-const formatError = (error: any, defaultMessage: string) => ({
-  error: error.message || defaultMessage,
-});
-
 const credentialsSchema = {
   username: t.String(),
   password: t.String(),
@@ -19,7 +11,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
   .use(
     jwt({
       name: "jwt",
-      secret: process.env.JWT_SECRET,
+      secret: process.env.JWT_SECRET as string,
     })
   )
   .post(
@@ -34,14 +26,13 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
         };
       } catch (error: any) {
         set.status = 400;
-        return formatError(error, "Registration failed.");
+        return { error: error.message || "Registration failed." };
       }
     },
     {
       body: t.Object({
         name: t.String(),
         hospitalName: t.String(),
-        qrKey: t.String(),
         ...credentialsSchema,
       }),
     }
@@ -58,7 +49,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
         };
       } catch (error: any) {
         set.status = 401;
-        return formatError(error, "Login failed.");
+        return { error: error.message || "Login failed." };
       }
     },
     {
