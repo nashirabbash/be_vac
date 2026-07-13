@@ -58,6 +58,8 @@ export interface LoginUserInput {
   password: string;
 }
 
+const INVALID_CRED_ERROR = "Invalid username or password.";
+
 export async function loginUser(data: LoginUserInput) {
   const { username, password } = data;
 
@@ -66,12 +68,12 @@ export async function loginUser(data: LoginUserInput) {
   });
 
   if (!user) {
-    throw new Error("Invalid username or password.");
+    throw new Error(INVALID_CRED_ERROR);
   }
 
   const isPasswordValid = await Bun.password.verify(password, user.passwordHash);
   if (!isPasswordValid) {
-    throw new Error("Invalid username or password.");
+    throw new Error(INVALID_CRED_ERROR);
   }
 
   const activeDeviceLink = await prisma.trDeviceUser.findFirst({
