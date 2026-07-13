@@ -1,0 +1,97 @@
+import { describe, expect, it, mock, beforeEach, beforeAll } from "bun:test";
+import { SignJWT } from "jose";
+import { deviceRoutes } from "../../src/routes/device";
+
+const secret = new TextEncoder().encode("test-secret");
+
+async function generateTestToken(payload: Record<string, unknown>) {
+  return await new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
+    .sign(secret);
+}
+
+let validToken = "";
+
+beforeAll(async () => {
+  validToken = await generateTestToken({ userId: 1, deviceId: 1, username: "testuser" });
+});
+
+const mockPrisma = {
+  device: { findUnique: mock() },
+  trDeviceUser: { updateMany: mock(), create: mock() },
+  $transaction: mock(async (queries) => {
+    for (const query of queries) await query;
+  }),
+};
+
+mock.module("../../src/db", () => ({
+  prisma: mockPrisma,
+}));
+
+beforeEach(() => {
+  mockPrisma.device.findUnique.mockClear();
+  mockPrisma.trDeviceUser.updateMany.mockClear();
+  mockPrisma.trDeviceUser.create.mockClear();
+  mockPrisma.$transaction.mockClear();
+});
+
+describe("POST /device/change", () => {
+  it("rejects request without authorization header", async () => {
+    const res = await deviceRoutes.handle(
+      new Request("http://localhost/device/change", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newQrKey: "valid-qr" }),
+      })
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 400 if service throws error", async () => {
+    mockPrisma.device.findUnique.mockResolvedValue(null);
+
+    const res = await deviceRoutes.handle(
+      new Request("http://localhost/device/change", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${validToken}`
+        },
+        body: JSON.stringify({ newQrKey: "invalid-qr" }),
+      })
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("Device not found.");
+  });
+
+  it("changes device and returns new token", async () => {
+    mockPrisma.device.findUnique.mockResolvedValue({ id: 2, qrKey: "valid-qr" });
+    mockPrisma.trDeviceUser.updateMany.mockResolvedValue({ count: 1 });
+    mockPrisma.trDeviceUser.create.mockResolvedValue({ id: 1, userId: 1, deviceId: 2, isActive: true });
+
+    const res = await deviceRoutes.handle(
+      new Request("http://localhost/device/change", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${validToken}`
+        },
+        body: JSON.stringify({ newQrKey: "valid-qr" }),
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.status).toBe("ok");
+    expect(body.token).toBeDefined();
+
+    // Optionally verify the token payload
+    const { jwtVerify } = await import("jose");
+    const { payload } = await jwtVerify(body.token, secret);
+    expect(payload.userId).toBe(1);
+    expect(payload.deviceId).toBe(2); // Successfully updated deviceId
+    expect(payload.username).toBe("testuser");
+  });
+});
