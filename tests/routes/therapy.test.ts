@@ -1,20 +1,22 @@
 import { describe, expect, it, mock, beforeEach, beforeAll } from "bun:test";
-import { jwt } from "@elysiajs/jwt";
+import { SignJWT } from "jose";
 import { Elysia } from "elysia";
 import { therapyRoutes } from "../../src/routes/therapy";
 
 process.env.JWT_SECRET = "test-secret";
+const secret = new TextEncoder().encode("test-secret");
 
 let validToken = "";
 let noDeviceToken = "";
 
 beforeAll(async () => {
-  const app = new Elysia().use(jwt({ name: "jwt", secret: "test-secret" }));
-  await app.get("/sign", async ({ jwt }) => {
-    validToken = await jwt.sign({ userId: 1, deviceId: 2, username: "testuser" });
-    noDeviceToken = await jwt.sign({ userId: 1, deviceId: null, username: "testuser" });
-    return "ok";
-  }).handle(new Request("http://localhost/sign"));
+  validToken = await new SignJWT({ userId: 1, deviceId: 2, username: "testuser" })
+    .setProtectedHeader({ alg: "HS256" })
+    .sign(secret);
+
+  noDeviceToken = await new SignJWT({ userId: 1, deviceId: null, username: "testuser" })
+    .setProtectedHeader({ alg: "HS256" })
+    .sign(secret);
 });
 
 const mockPrisma = {
@@ -99,6 +101,27 @@ describe("POST /therapy-sessions", () => {
     );
 
     expect(res.status).toBe(422);
+  });
+
+  it("rejects request if deviceId is null", async () => {
+    const res = await therapyRoutes.handle(
+      new Request("http://localhost/therapy-sessions", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${noDeviceToken}`
+        },
+        body: JSON.stringify({
+          sessionDate: "2026-07-13T10:00:00Z",
+          title: "Test Session",
+          date: "13 Jul 2026",
+          mode: "Intermiten",
+          duration: "30 menit",
+        }),
+      })
+    );
+
+    expect(res.status).toBe(403);
   });
 });
 
