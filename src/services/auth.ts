@@ -7,8 +7,6 @@ export interface RegisterUserInput {
   password: string;
 }
 
-const INVALID_CRED_ERROR = "Invalid username or password.";
-
 export async function registerUser(data: RegisterUserInput) {
   const { name, hospitalName, username, password } = data;
 
@@ -31,6 +29,8 @@ export interface LoginUserInput {
   username: string;
   password: string;
 }
+
+const INVALID_CRED_ERROR = "Invalid username or password.";
 
 export async function loginUser(data: LoginUserInput) {
   const { username, password } = data;

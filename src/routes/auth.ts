@@ -2,6 +2,9 @@ import { Elysia, t } from "elysia";
 import { jwt } from "@elysiajs/jwt";
 import { registerUser, loginUser } from "../services/auth";
 
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) throw new Error("JWT_SECRET environment variable is not defined");
+
 const credentialsSchema = {
   username: t.String(),
   password: t.String(),
@@ -11,7 +14,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
   .use(
     jwt({
       name: "jwt",
-      secret: process.env.JWT_SECRET as string,
+      secret: jwtSecret,
     })
   )
   .post(
