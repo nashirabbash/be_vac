@@ -52,3 +52,42 @@ export async function registerUser(data: RegisterUserInput) {
 
   return { id: newUser.id, username: newUser.username };
 }
+
+export interface LoginUserInput {
+  username: string;
+  password: string;
+}
+
+export async function loginUser(data: LoginUserInput) {
+  const { username, password } = data;
+
+  const user = await prisma.user.findUnique({
+    where: { username },
+  });
+
+  if (!user) {
+    throw new Error("Invalid username or password.");
+  }
+
+  const isPasswordValid = await Bun.password.verify(password, user.passwordHash);
+  if (!isPasswordValid) {
+    throw new Error("Invalid username or password.");
+  }
+
+  const activeDeviceLink = await prisma.trDeviceUser.findFirst({
+    where: {
+      userId: user.id,
+      isActive: true,
+    },
+  });
+
+  if (!activeDeviceLink) {
+    throw new Error("No active device found for this user.");
+  }
+
+  return {
+    userId: user.id,
+    deviceId: activeDeviceLink.deviceId,
+    username: user.username,
+  };
+}
