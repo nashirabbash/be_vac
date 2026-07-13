@@ -9,19 +9,19 @@ export const loggerMiddleware = new Elysia({ name: "logger" })
     logger.info(`[onRequest] ${request.method} ${request.url}`);
   })
   .onParse(({ request }) => {
-    logger.debug(`[onParse] ${request.method} ${request.url}`);
+    logger.info(`[onParse] ${request.method} ${request.url}`);
   })
   .onTransform(({ request }) => {
-    logger.debug(`[onTransform] ${request.method} ${request.url}`);
+    logger.info(`[onTransform] ${request.method} ${request.url}`);
   })
   .onBeforeHandle(({ request }) => {
-    logger.debug(`[onBeforeHandle] ${request.method} ${request.url}`);
+    logger.info(`[onBeforeHandle] ${request.method} ${request.url}`);
   })
   .onAfterHandle(({ request }) => {
-    logger.debug(`[onAfterHandle] ${request.method} ${request.url}`);
+    logger.info(`[onAfterHandle] ${request.method} ${request.url}`);
   })
-  .onResponse(({ request, set }) => {
-    logger.info(`[onResponse] ${request.method} ${request.url} - Status: ${set.status || 200}`);
+  .onAfterResponse(({ request, set }) => {
+    logger.info(`[onAfterResponse] ${request.method} ${request.url} - Status: ${set.status || 200}`);
   })
   .onError(({ request, error }) => {
     logger.error(`[onError] ${request.method} ${request.url} - Error: ${error.message}`);
