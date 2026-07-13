@@ -1,13 +1,23 @@
 import { prisma } from "../db";
 import { resolveQrKeyToIndex } from "../utils/qrResolver";
 
-export async function registerUser(data: any) {
+export interface RegisterUserInput {
+  name: string;
+  hospitalName: string;
+  username: string;
+  password: string;
+  qrKey: string;
+}
+
+const INVALID_DEVICE_ERROR = "Invalid qrKey or device is not produced.";
+
+export async function registerUser(data: RegisterUserInput) {
   const { name, hospitalName, username, password, qrKey } = data;
 
   const deviceIndex = resolveQrKeyToIndex(qrKey);
 
   if (!deviceIndex) {
-    throw new Error("Invalid qrKey or device is not produced.");
+    throw new Error(INVALID_DEVICE_ERROR);
   }
 
   // Validate qrKey by checking if the resolved device ID exists in Device table and isProduced is true
@@ -16,7 +26,7 @@ export async function registerUser(data: any) {
   });
 
   if (!device || !device.isProduced) {
-    throw new Error("Invalid qrKey or device is not produced.");
+    throw new Error(INVALID_DEVICE_ERROR);
   }
 
   // Hash the password using Bun's built-in bcrypt/argon2 hashing

@@ -13,9 +13,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" }).post(
       };
     } catch (error: any) {
       set.status = 400;
-      // Depending on the error, provide a generic or specific message
-      const message = error.message || "Registration failed.";
-      return { error: message.includes("Unique constraint") ? "Registration failed. Username may already exist." : message };
+      return { error: error.message || "Registration failed." };
     }
   },
   {
