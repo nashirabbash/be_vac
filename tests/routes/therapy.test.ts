@@ -1,9 +1,14 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test";
+import { describe, expect, it, mock, beforeEach, beforeAll } from "bun:test";
+
+// Mock JWT_SECRET before importing the routes
+process.env.JWT_SECRET = "test-secret-key";
+
+import { Elysia } from "elysia";
+import { jwt } from "@elysiajs/jwt";
 import { therapyRoutes } from "../../src/routes/therapy";
 
 const mockPrisma = {
-  therapySession: {
-    count: mock(() => 0),
+  history: {
     create: mock((args: { data: Record<string, unknown> }) => ({
       id: 1,
       ...args.data,
@@ -20,77 +25,102 @@ mock.module("../../src/logger", () => ({
   logger: { info: mock(() => {}) },
 }));
 
+let validToken = "";
+let noDeviceToken = "";
+
+beforeAll(async () => {
+  // Generate tokens for testing
+  const app = new Elysia().use(jwt({ name: "jwt", secret: "test-secret-key" }));
+  // Extract jwt via a dummy route
+  await app.get("/sign", async ({ jwt }) => {
+    validToken = await jwt.sign({ userId: 1, deviceId: 2, username: "testuser" });
+    noDeviceToken = await jwt.sign({ userId: 1, deviceId: null, username: "testuser" });
+    return "ok";
+  }).handle(new Request("http://localhost/sign"));
+});
+
 beforeEach(() => {
-  mockPrisma.therapySession.count.mockClear();
-  mockPrisma.therapySession.create.mockClear();
-  mockPrisma.therapySession.findMany.mockClear();
-  mockPrisma.therapySession.count.mockImplementation(() => 0);
+  mockPrisma.history.create.mockClear();
+  mockPrisma.history.findMany.mockClear();
 });
 
 describe("POST /therapy-sessions", () => {
-  it("creates session and returns 200", async () => {
+  it("rejects request without authorization header", async () => {
     const res = await therapyRoutes.handle(
       new Request("http://localhost/therapy-sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ start: 1751436000, end: 1751439600, mode: 1 }),
+        body: JSON.stringify({ 
+          sessionDate: "2026-07-13T10:00:00Z",
+          title: "Test",
+          date: "13 Jul 2026",
+          mode: "Intermiten",
+          duration: "30 menit"
+        }),
+      })
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects request when user has no active device", async () => {
+    const res = await therapyRoutes.handle(
+      new Request("http://localhost/therapy-sessions", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${noDeviceToken}`
+        },
+        body: JSON.stringify({ 
+          sessionDate: "2026-07-13T10:00:00Z",
+          title: "Test",
+          date: "13 Jul 2026",
+          mode: "Intermiten",
+          duration: "30 menit"
+        }),
+      })
+    );
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe("No active device associated with user");
+  });
+
+  it("creates session and returns 200 with valid token", async () => {
+    const payload = {
+      sessionDate: "2026-07-13T10:00:00Z",
+      title: "Test Session",
+      date: "13 Jul 2026",
+      mode: "Intermiten",
+      duration: "30 menit",
+    };
+
+    const res = await therapyRoutes.handle(
+      new Request("http://localhost/therapy-sessions", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${validToken}`
+        },
+        body: JSON.stringify(payload),
       })
     );
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.status).toBe("ok");
-    expect(body.data.title).toBe("Terapi #1");
-    expect(body.data.mode).toBe("Intermiten");
+    expect(body.data.title).toBe("Test Session");
+    expect(body.data.userId).toBe(1);
+    expect(body.data.deviceId).toBe(2);
   });
 
   it("rejects request with missing fields", async () => {
     const res = await therapyRoutes.handle(
       new Request("http://localhost/therapy-sessions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ start: 1751436000 }),
-      })
-    );
-
-    expect(res.status).toBe(422);
-  });
-
-  it("rejects request with wrong types", async () => {
-    const res = await therapyRoutes.handle(
-      new Request("http://localhost/therapy-sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ start: "abc", end: 123, mode: 1 }),
-      })
-    );
-
-    expect(res.status).toBe(422);
-  });
-
-  it("creates session with mode 0 (Kontinyu)", async () => {
-    mockPrisma.therapySession.count.mockImplementation(() => 4);
-
-    const res = await therapyRoutes.handle(
-      new Request("http://localhost/therapy-sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ start: 1751436000, end: 1751436060, mode: 0 }),
-      })
-    );
-
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.data.title).toBe("Terapi #5");
-    expect(body.data.mode).toBe("Kontinyu");
-  });
-
-  it("rejects empty body", async () => {
-    const res = await therapyRoutes.handle(
-      new Request("http://localhost/therapy-sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${validToken}`
+        },
+        body: JSON.stringify({ sessionDate: "2026-07-13T10:00:00Z" }),
       })
     );
 
@@ -99,47 +129,48 @@ describe("POST /therapy-sessions", () => {
 });
 
 describe("GET /therapy-sessions", () => {
-  it("returns all sessions", async () => {
-    const sessions = [
-      { id: 1, sessionDate: "2026-07-01T00:00:00.000Z", title: "Terapi #1", date: "1 Jul 2026", mode: "Intermiten", duration: "1 jam 0 menit" },
-      { id: 2, sessionDate: "2026-06-30T00:00:00.000Z", title: "Terapi #2", date: "30 Jun 2026", mode: "Kontinyu", duration: "30 menit" },
-    ];
-    mockPrisma.therapySession.findMany.mockImplementation(() => sessions);
-
+  it("rejects request without authorization header", async () => {
     const res = await therapyRoutes.handle(
       new Request("http://localhost/therapy-sessions")
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("returns all sessions for authenticated user", async () => {
+    const sessions = [
+      { id: 1, userId: 1, deviceId: 2, title: "Test", sessionDate: "2026-07-01T00:00:00.000Z", date: "1 Jul", mode: "1", duration: "1h" },
+    ];
+    mockPrisma.history.findMany.mockImplementation(() => sessions);
+
+    const res = await therapyRoutes.handle(
+      new Request("http://localhost/therapy-sessions", {
+        headers: { "Authorization": `Bearer ${validToken}` }
+      })
     );
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.status).toBe("ok");
-    expect(body.data).toHaveLength(2);
-    expect(body.data[0].title).toBe("Terapi #1");
-  });
-
-  it("filters by year", async () => {
-    mockPrisma.therapySession.findMany.mockImplementation(() => []);
-
-    const res = await therapyRoutes.handle(
-      new Request("http://localhost/therapy-sessions?year=2025")
-    );
-
-    expect(res.status).toBe(200);
-    expect(mockPrisma.therapySession.findMany).toHaveBeenCalledWith({
-      where: { sessionDate: { startsWith: "2025" } },
+    expect(body.data).toHaveLength(1);
+    expect(mockPrisma.history.findMany).toHaveBeenCalledWith({
+      where: { userId: 1 },
       orderBy: { sessionDate: "desc" },
     });
   });
 
-  it("returns empty array when no sessions", async () => {
-    mockPrisma.therapySession.findMany.mockImplementation(() => []);
+  it("filters by year", async () => {
+    mockPrisma.history.findMany.mockImplementation(() => []);
 
     const res = await therapyRoutes.handle(
-      new Request("http://localhost/therapy-sessions")
+      new Request("http://localhost/therapy-sessions?year=2025", {
+        headers: { "Authorization": `Bearer ${validToken}` }
+      })
     );
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.data).toEqual([]);
+    expect(mockPrisma.history.findMany).toHaveBeenCalledWith({
+      where: { userId: 1, sessionDate: { startsWith: "2025" } },
+      orderBy: { sessionDate: "desc" },
+    });
   });
 });
