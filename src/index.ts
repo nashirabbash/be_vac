@@ -9,5 +9,5 @@ const app = new Elysia()
   .use(loggerMiddleware)
   .use(swagger({ path: "/docs" }))
   .get("/", () => "Hello Elysia")
-  .group("/api", (app) => app.use(therapyRoutes).use(authRoutes).use(deviceRoutes))
+  .group("/api", (app) => app.use(authRoutes).use(therapyRoutes).use(deviceRoutes))
   .listen({ port: 3000, hostname: "0.0.0.0" });

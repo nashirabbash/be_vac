@@ -24,7 +24,14 @@ export const loggerMiddleware = (app: Elysia) => app
     logger.debug({ response }, `[onAfterHandle] ${request.method} ${request.url}`);
   })
   .onAfterResponse(({ request, response, set }) => {
-    logger.info({ status: set.status || 200, headers: set.headers }, `[RESPONSE] ✅ Selesai: ${request.method} ${request.url} - Status: ${set.status || 200}`);
+    const status = set.status || 200;
+    if (status >= 500) {
+      logger.error({ status, headers: set.headers }, `[FAILED] 💥 Server Error: ${request.method} ${request.url} - Status: ${status}`);
+    } else if (status >= 400) {
+      logger.warn({ status, headers: set.headers }, `[FAILED] ❌ Gagal: ${request.method} ${request.url} - Status: ${status}`);
+    } else {
+      logger.info({ status, headers: set.headers }, `[RESPONSE] ✅ Selesai: ${request.method} ${request.url} - Status: ${status}`);
+    }
   })
   .onError(({ request, error, code }) => {
     const errorMsg = error instanceof Error ? error.message : (error as any).message || String(error);

@@ -30,4 +30,4 @@ export const authMiddleware = new Elysia({ name: "auth-middleware" })
       return { error: "Unauthorized" };
     }
   })
-  .as("plugin");
+  .as("scoped");
