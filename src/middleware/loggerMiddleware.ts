@@ -24,7 +24,8 @@ export const loggerMiddleware = new Elysia({ name: "logger" })
     logger.info(`[onAfterResponse] ${request.method} ${request.url} - Status: ${set.status || 200}`);
   })
   .onError(({ request, error }) => {
-    logger.error(`[onError] ${request.method} ${request.url} - Error: ${error.message}`);
+    const errorMsg = error instanceof Error ? error.message : (error as any).message || String(error);
+    logger.error(`[onError] ${request.method} ${request.url} - Error: ${errorMsg}`);
   })
   .onStop(() => {
     logger.info("Server stopped");
