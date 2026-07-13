@@ -17,6 +17,7 @@
       },
       "devDependencies": {
         "bun-types": "latest",
+        "jose": "^6.2.3",
       },
     },
   },

@@ -6,17 +6,26 @@ import { therapyRoutes } from "../../src/routes/therapy";
 process.env.JWT_SECRET = "test-secret";
 const secret = new TextEncoder().encode("test-secret");
 
+async function generateTestToken(payload: Record<string, unknown>) {
+  return await new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
+    .sign(secret);
+}
+
 let validToken = "";
 let noDeviceToken = "";
 
-beforeAll(async () => {
-  validToken = await new SignJWT({ userId: 1, deviceId: 2, username: "testuser" })
-    .setProtectedHeader({ alg: "HS256" })
-    .sign(secret);
+const mockPayload = {
+  sessionDate: "2026-07-13T10:00:00Z",
+  title: "Test Session",
+  date: "13 Jul 2026",
+  mode: "Intermiten",
+  duration: "30 menit",
+};
 
-  noDeviceToken = await new SignJWT({ userId: 1, deviceId: null, username: "testuser" })
-    .setProtectedHeader({ alg: "HS256" })
-    .sign(secret);
+beforeAll(async () => {
+  validToken = await generateTestToken({ userId: 1, deviceId: 2, username: "testuser" });
+  noDeviceToken = await generateTestToken({ userId: 1, deviceId: null, username: "testuser" });
 });
 
 const mockPrisma = {
@@ -48,27 +57,13 @@ describe("POST /therapy-sessions", () => {
       new Request("http://localhost/therapy-sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionDate: "2026-07-13T10:00:00Z",
-          title: "Test",
-          date: "13 Jul 2026",
-          mode: "Intermiten",
-          duration: "30 menit"
-        }),
+        body: JSON.stringify(mockPayload),
       })
     );
     expect(res.status).toBe(401);
   });
 
   it("creates session and returns 200 with valid token", async () => {
-    const payload = {
-      sessionDate: "2026-07-13T10:00:00Z",
-      title: "Test Session",
-      date: "13 Jul 2026",
-      mode: "Intermiten",
-      duration: "30 menit",
-    };
-
     const res = await therapyRoutes.handle(
       new Request("http://localhost/therapy-sessions", {
         method: "POST",
@@ -76,7 +71,7 @@ describe("POST /therapy-sessions", () => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${validToken}`
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(mockPayload),
       })
     );
 
@@ -111,13 +106,7 @@ describe("POST /therapy-sessions", () => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${noDeviceToken}`
         },
-        body: JSON.stringify({
-          sessionDate: "2026-07-13T10:00:00Z",
-          title: "Test Session",
-          date: "13 Jul 2026",
-          mode: "Intermiten",
-          duration: "30 menit",
-        }),
+        body: JSON.stringify(mockPayload),
       })
     );
 

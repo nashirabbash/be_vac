@@ -7,14 +7,15 @@ export const therapyRoutes = new Elysia({ prefix: "/therapy-sessions" })
   .post(
     "/",
     async ({ body, user, set }) => {
-      if (user!.deviceId === null) {
+      const { userId, deviceId } = user!;
+      if (deviceId === null) {
         set.status = 403;
         return { error: "Device required" };
       }
       const session = await createTherapySession({ 
         ...body, 
-        userId: user!.userId, 
-        deviceId: user!.deviceId
+        userId, 
+        deviceId
       });
       return { status: "ok", data: session };
     },
@@ -31,7 +32,8 @@ export const therapyRoutes = new Elysia({ prefix: "/therapy-sessions" })
   .get(
     "/",
     async ({ query, user }) => {
-      const sessions = await getTherapySessions(user!.userId, query.year);
+      const { userId } = user!;
+      const sessions = await getTherapySessions(userId, query.year);
       return { status: "ok", data: sessions };
     },
     {
