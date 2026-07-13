@@ -19,13 +19,13 @@ beforeEach(() => {
   mockPrisma.$transaction.mockClear();
 });
 
-describe("POST /device/change", () => {
+describe("POST /device/bind", () => {
   it("rejects request without authorization header", async () => {
     const res = await deviceRoutes.handle(
-      new Request("http://localhost/device/change", {
+      new Request("http://localhost/device/bind", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newQrKey: "valid-qr" }),
+        body: JSON.stringify({ qrKey: "valid-qr" }),
       })
     );
     expect(res.status).toBe(401);
@@ -35,13 +35,13 @@ describe("POST /device/change", () => {
     mockPrisma.device.findUnique.mockResolvedValue(null);
 
     const res = await deviceRoutes.handle(
-      new Request("http://localhost/device/change", {
+      new Request("http://localhost/device/bind", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${validToken}`
         },
-        body: JSON.stringify({ newQrKey: "invalid-qr" }),
+        body: JSON.stringify({ qrKey: "invalid-qr" }),
       })
     );
 
@@ -50,19 +50,19 @@ describe("POST /device/change", () => {
     expect(body.error).toBe("Device not found.");
   });
 
-  it("changes device and returns new token", async () => {
-    mockPrisma.device.findUnique.mockResolvedValue({ id: 2, qrKey: "valid-qr" });
+  it("binds device and returns new token", async () => {
+    mockPrisma.device.findUnique.mockResolvedValue({ id: 2, qrKey: "valid-qr", isProduced: true });
     mockPrisma.trDeviceUser.updateMany.mockResolvedValue({ count: 1 });
     mockPrisma.trDeviceUser.create.mockResolvedValue({ id: 1, userId: 1, deviceId: 2, isActive: true });
 
     const res = await deviceRoutes.handle(
-      new Request("http://localhost/device/change", {
+      new Request("http://localhost/device/bind", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           "Authorization": `Bearer ${validToken}`
         },
-        body: JSON.stringify({ newQrKey: "valid-qr" }),
+        body: JSON.stringify({ qrKey: "valid-qr" }),
       })
     );
 

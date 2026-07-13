@@ -1,15 +1,15 @@
 import { Elysia, t } from "elysia";
 import { authMiddleware } from "../middleware/auth";
-import { changeActiveDevice } from "../services/device";
+import { bindDevice } from "../services/device";
 
 export const deviceRoutes = new Elysia({ prefix: "/device" })
   .use(authMiddleware)
   .post(
-    "/change",
+    "/bind",
     async ({ body, user, jwt, set }) => {
-      const { newQrKey } = body;
+      const { qrKey } = body;
       try {
-        const newDeviceId = await changeActiveDevice(user!.userId, newQrKey);
+        const newDeviceId = await bindDevice(user!.userId, qrKey);
 
         const newToken = await jwt.sign({
           ...user,
@@ -19,12 +19,12 @@ export const deviceRoutes = new Elysia({ prefix: "/device" })
         return { status: "ok", token: newToken };
       } catch (error: any) {
         set.status = 400;
-        return { error: error.message || "Failed to change device" };
+        return { error: error.message || "Failed to bind device" };
       }
     },
     {
       body: t.Object({
-        newQrKey: t.String(),
+        qrKey: t.String(),
       }),
     }
   );
