@@ -7,13 +7,53 @@ datasource db {
   provider = "postgresql"
 }
 
-model TherapySession {
-  id           Int    @id @default(autoincrement())
-  sessionDate String @map("session_date")
-  title        String
-  date         String
-  mode         String
-  duration     String
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  hospitalName String
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  @@map("therapy_sessions")
+  deviceUsers TrDeviceUser[]
+  histories   History[]
+}
+
+model Device {
+  id         Int      @id @default(autoincrement())
+  qrKey      String   @unique
+  isProduced Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  deviceUsers TrDeviceUser[]
+  histories   History[]
+}
+
+model TrDeviceUser {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  deviceId  Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id])
+  device Device @relation(fields: [deviceId], references: [id])
+}
+
+model History {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  deviceId    Int
+  sessionDate String
+  title       String
+  date        String
+  mode        String
+  duration    String
+  createdAt   DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  device Device @relation(fields: [deviceId], references: [id])
 }
