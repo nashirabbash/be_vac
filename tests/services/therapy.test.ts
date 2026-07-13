@@ -1,15 +1,6 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test";
 import { createTherapySession, getTherapySessions } from "../../src/services/therapy";
-
-const mockPrisma = {
-  history: {
-    create: mock((args: { data: Record<string, unknown> }) => ({
-      id: 1,
-      ...args.data,
-    })),
-    findMany: mock(() => []),
-  },
-};
+import { mockPrisma } from "../utils";
 
 mock.module("../../src/db", () => ({
   prisma: mockPrisma,
