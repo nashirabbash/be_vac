@@ -10,8 +10,8 @@ Semua *endpoint* yang memerlukan autentikasi harus menyertakan Header:
 
 ## 1. Authentication
 
-### A. Register User & Bind Initial Device
-Mendaftarkan user baru dan langsung menghubungkan ke perangkat pertama mereka berdasarkan QR Key (dari stiker alat).
+### A. Register User
+Mendaftarkan user baru. (User belum memiliki perangkat saat tahap ini).
 
 - **URL:** `/api/auth/register`
 - **Method:** `POST`
@@ -22,8 +22,7 @@ Mendaftarkan user baru dan langsung menghubungkan ke perangkat pertama mereka be
     "name": "John Doe",
     "hospitalName": "RSUD Sehat",
     "username": "johndoe",
-    "password": "securepassword123",
-    "qrKey": "gKwJQ"
+    "password": "securepassword123"
   }
   ```
 - **Success Response (201 Created):**
@@ -32,20 +31,19 @@ Mendaftarkan user baru dan langsung menghubungkan ke perangkat pertama mereka be
     "message": "User registered successfully",
     "data": {
       "id": 1,
-      "username": "johndoe",
-      "deviceId": 1
+      "username": "johndoe"
     }
   }
   ```
-- **Error Response (400 Bad Request):** *(Misal QR salah atau device belum diproduksi)*
+- **Error Response (400 Bad Request):**
   ```json
   {
-    "error": "Invalid QR Key or Device not found"
+    "error": "Registration failed. Username may already exist."
   }
   ```
 
 ### B. Login User
-Mengautentikasi user dan mendapatkan JWT token. Token ini memiliki *payload* yang berisi `userId` dan `deviceId` (dari perangkat yang saat ini aktif/di-bind).
+Mengautentikasi user dan mendapatkan JWT token. Token ini memiliki *payload* yang berisi `userId` dan `deviceId` (dari perangkat yang saat ini aktif/di-bind). Jika user belum menghubungkan perangkat apa pun, `deviceId` akan bernilai `null`.
 
 - **URL:** `/api/auth/login`
 - **Method:** `POST`
@@ -64,7 +62,7 @@ Mengautentikasi user dan mendapatkan JWT token. Token ini memiliki *payload* yan
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "data": {
       "userId": 1,
-      "deviceId": 1,
+      "deviceId": null,
       "username": "johndoe"
     }
   }
@@ -80,23 +78,23 @@ Mengautentikasi user dan mendapatkan JWT token. Token ini memiliki *payload* yan
 
 ## 2. Device Management
 
-### A. Change Active Device
-Mengganti perangkat yang sedang digunakan oleh user aktif. Ini akan memutus koneksi (mengubah `isActive = false` di tabel relasi `TrDeviceUser`) dari device lama dan membuat koneksi ke device baru, lalu mengembalikan token JWT yang baru.
+### A. Bind / Change Active Device
+Menghubungkan perangkat baru berdasarkan hasil pemindaian QR Code. Ini akan memutus koneksi (mengubah `isActive = false` di tabel relasi `TrDeviceUser`) dari device lama (jika ada) dan membuat koneksi ke device baru, lalu mengembalikan token JWT yang baru.
 
-- **URL:** `/api/device/change`
+- **URL:** `/api/device/bind`
 - **Method:** `POST`
 - **Auth Required:** Yes (Bearer Token)
 - **Request Body (application/json):**
   ```json
   {
-    "newQrKey": "aBcDe"
+    "qrKey": "aBcDe"
   }
   ```
 - **Success Response (200 OK):**
-  Aplikasi mobile *WAJIB* menyimpan `newToken` ini untuk menimpa token lama, karena payload `deviceId`-nya sudah berubah.
+  Aplikasi mobile *WAJIB* menyimpan `newToken` ini untuk menimpa token lama, karena payload `deviceId`-nya sudah berubah/terisi.
   ```json
   {
-    "message": "Device changed successfully",
+    "message": "Device bound successfully",
     "newToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "data": {
       "userId": 1,
@@ -107,7 +105,7 @@ Mengganti perangkat yang sedang digunakan oleh user aktif. Ini akan memutus kone
 - **Error Response (400 Bad Request):**
   ```json
   {
-    "error": "New QR Key invalid or device not found"
+    "error": "Invalid qrKey or device not found"
   }
   ```
 
