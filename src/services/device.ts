@@ -1,11 +1,11 @@
 import { prisma } from "../db";
 
-export async function changeActiveDevice(userId: number, newQrKey: string) {
+export async function bindDevice(userId: number, qrKey: string) {
   const device = await prisma.device.findUnique({
-    where: { qrKey: newQrKey },
+    where: { qrKey },
   });
 
-  if (!device) {
+  if (!device || !device.isProduced) {
     throw new Error("Device not found.");
   }
 
