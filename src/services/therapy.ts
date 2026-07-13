@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { logger } from "../logger";
+import { Prisma } from "../generated/prisma/client";
 
 export interface CreateTherapyPayload {
   userId: number;
@@ -21,7 +22,7 @@ export async function createTherapySession(payload: CreateTherapyPayload) {
 }
 
 export async function getTherapySessions(userId: number, year?: string) {
-  const where: any = { userId };
+  const where: Prisma.HistoryWhereInput = { userId };
   if (year) {
     where.sessionDate = { startsWith: year };
   }

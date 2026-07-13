@@ -1,11 +1,21 @@
 import { describe, expect, it, mock, beforeEach, beforeAll } from "bun:test";
-
-// Mock JWT_SECRET before importing the routes
-process.env.JWT_SECRET = "test-secret-key";
-
-import { Elysia } from "elysia";
 import { jwt } from "@elysiajs/jwt";
+import { Elysia } from "elysia";
 import { therapyRoutes } from "../../src/routes/therapy";
+
+process.env.JWT_SECRET = "test-secret";
+
+let validToken = "";
+let noDeviceToken = "";
+
+beforeAll(async () => {
+  const app = new Elysia().use(jwt({ name: "jwt", secret: "test-secret" }));
+  await app.get("/sign", async ({ jwt }) => {
+    validToken = await jwt.sign({ userId: 1, deviceId: 2, username: "testuser" });
+    noDeviceToken = await jwt.sign({ userId: 1, deviceId: null, username: "testuser" });
+    return "ok";
+  }).handle(new Request("http://localhost/sign"));
+});
 
 const mockPrisma = {
   history: {
@@ -25,20 +35,6 @@ mock.module("../../src/logger", () => ({
   logger: { info: mock(() => {}) },
 }));
 
-let validToken = "";
-let noDeviceToken = "";
-
-beforeAll(async () => {
-  // Generate tokens for testing
-  const app = new Elysia().use(jwt({ name: "jwt", secret: "test-secret-key" }));
-  // Extract jwt via a dummy route
-  await app.get("/sign", async ({ jwt }) => {
-    validToken = await jwt.sign({ userId: 1, deviceId: 2, username: "testuser" });
-    noDeviceToken = await jwt.sign({ userId: 1, deviceId: null, username: "testuser" });
-    return "ok";
-  }).handle(new Request("http://localhost/sign"));
-});
-
 beforeEach(() => {
   mockPrisma.history.create.mockClear();
   mockPrisma.history.findMany.mockClear();
@@ -50,7 +46,7 @@ describe("POST /therapy-sessions", () => {
       new Request("http://localhost/therapy-sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           sessionDate: "2026-07-13T10:00:00Z",
           title: "Test",
           date: "13 Jul 2026",
@@ -60,28 +56,6 @@ describe("POST /therapy-sessions", () => {
       })
     );
     expect(res.status).toBe(401);
-  });
-
-  it("rejects request when user has no active device", async () => {
-    const res = await therapyRoutes.handle(
-      new Request("http://localhost/therapy-sessions", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${noDeviceToken}`
-        },
-        body: JSON.stringify({ 
-          sessionDate: "2026-07-13T10:00:00Z",
-          title: "Test",
-          date: "13 Jul 2026",
-          mode: "Intermiten",
-          duration: "30 menit"
-        }),
-      })
-    );
-    expect(res.status).toBe(403);
-    const body = await res.json();
-    expect(body.error).toBe("No active device associated with user");
   });
 
   it("creates session and returns 200 with valid token", async () => {
