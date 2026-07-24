@@ -1,12 +1,6 @@
-export function resolveQrKey(rawQr: string): number {
-  if (!rawQr) return -1;
+export function resolveQrKey(rawQr: string): string {
+  if (!rawQr) return "";
   
-  // Simulate decoding a qr_key into a device index (e.g., gKwJQ -> index 1)
-  const simulationMap: Record<string, number> = {
-    "gKwJQ": 1,
-    "valid-qr": 2, // Map to 2 for device.test.ts compatibility
-  };
-  
-  // Return mapped index or fallback to a dummy integer simulation
-  return simulationMap[rawQr] || rawQr.length;
+  // Format QR: B002U|9A2F -> Bagian pertama adalah DEVICE_ID (B002U)
+  return rawQr.split("|")[0];
 }
