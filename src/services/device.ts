@@ -1,6 +1,9 @@
 import { prisma } from "../db";
+import type { Prisma } from "../generated/prisma/client";
+import { resolveQrKey } from "../utils/qrResolver";
 
-export async function validateDeviceByQr(qrKey: string) {
+export async function validateDeviceByQr(rawQr: string) {
+  const qrKey = resolveQrKey(rawQr);
   const device = await prisma.device.findUnique({
     where: { qrKey },
   });
@@ -11,7 +14,7 @@ export async function validateDeviceByQr(qrKey: string) {
   return device;
 }
 
-export async function createDeviceBindingTx(tx: any, userId: number, deviceId: number) {
+export async function createDeviceBindingTx(tx: Prisma.TransactionClient, userId: number, deviceId: number) {
   return tx.trDeviceUser.create({
     data: {
       userId,
