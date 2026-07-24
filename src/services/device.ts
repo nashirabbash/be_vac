@@ -3,9 +3,9 @@ import type { Prisma } from "../generated/prisma/client";
 import { resolveQrKey } from "../utils/qrResolver";
 
 export async function validateDeviceByQr(rawQr: string) {
-  const qrKey = resolveQrKey(rawQr);
+  const deviceId = resolveQrKey(rawQr);
   const device = await prisma.device.findUnique({
-    where: { qrKey },
+    where: { id: deviceId },
   });
 
   if (!device || !device.isProduced) {
