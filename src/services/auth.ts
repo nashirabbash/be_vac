@@ -1,4 +1,5 @@
 import { prisma } from "../db";
+import { validateDeviceByQr, createDeviceBindingTx } from "./device";
 
 export interface RegisterUserInput {
   name: string;
@@ -8,16 +9,10 @@ export interface RegisterUserInput {
   qrKey: string;
 }
 
-export async function registerUser(data: RegisterUserInput) {
+export async function registerWithDevice(data: RegisterUserInput) {
   const { name, hospitalName, username, password, qrKey } = data;
 
-  const device = await prisma.device.findUnique({
-    where: { qrKey },
-  });
-
-  if (!device || !device.isProduced) {
-    throw new Error("Device not found or invalid.");
-  }
+  const device = await validateDeviceByQr(qrKey);
 
   // Hash the password using Bun's built-in bcrypt/argon2 hashing
   const passwordHash = await Bun.password.hash(password);
@@ -32,13 +27,7 @@ export async function registerUser(data: RegisterUserInput) {
       },
     });
 
-    await tx.trDeviceUser.create({
-      data: {
-        userId: user.id,
-        deviceId: device.id,
-        isActive: true,
-      },
-    });
+    await createDeviceBindingTx(tx, user.id, device.id);
 
     return user;
   });

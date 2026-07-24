@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { jwt } from "@elysiajs/jwt";
-import { registerUser, loginUser, checkCanLogout } from "../services/auth";
+import { registerWithDevice, loginUser, checkCanLogout } from "../services/auth";
 import { authMiddleware } from "../middleware/auth";
 
 const jwtSecret = process.env.JWT_SECRET;
@@ -22,7 +22,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     "/register",
     async ({ body, set, jwt }) => {
       try {
-        const result = await registerUser(body);
+        const result = await registerWithDevice(body);
         
         const token = await jwt.sign({
           userId: result.id,
