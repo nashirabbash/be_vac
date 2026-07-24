@@ -106,8 +106,8 @@ describe("GET /therapy-sessions", () => {
   });
 
   it("returns all sessions for authenticated user", async () => {
-    const sessions = [
-      { id: 1, userId: 1, deviceId: 2, title: "Test", sessionDate: "2026-07-01T00:00:00.000Z", date: "1 Jul", mode: "1", duration: "1h" },
+    const sessions: any = [
+      { id: 1, userId: 1, deviceId: 2, title: "Test", sessionDate: "2026-07-01T00:00:00.000Z", date: "1 Jul", mode: "1", duration: "1h", createdAt: new Date() },
     ];
     mockPrisma.history.findMany.mockImplementation(() => sessions);
 

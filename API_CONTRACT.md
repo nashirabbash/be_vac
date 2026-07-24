@@ -22,23 +22,27 @@ Mendaftarkan user baru. (User belum memiliki perangkat saat tahap ini).
     "name": "John Doe",
     "hospitalName": "RSUD Sehat",
     "username": "johndoe",
-    "password": "securepassword123"
+    "password": "securepassword123",
+    "qrKey": "B002U"
   }
   ```
 - **Success Response (201 Created):**
+  Mengembalikan token secara langsung (seperti login) karena alat langsung diikat (*bound*).
   ```json
   {
-    "message": "User registered successfully",
+    "message": "User registered and device bound successfully",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "data": {
       "id": 1,
-      "username": "johndoe"
+      "username": "johndoe",
+      "deviceId": 2
     }
   }
   ```
 - **Error Response (400 Bad Request):**
   ```json
   {
-    "error": "Registration failed. Username may already exist."
+    "error": "Registration failed. Username may exist or qrKey not found."
   }
   ```
 

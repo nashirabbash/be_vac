@@ -41,8 +41,8 @@ describe("createTherapySession", () => {
 
 describe("getTherapySessions", () => {
   it("returns all sessions for a user when no year filter", async () => {
-    const sessions = [
-      { id: 1, userId: 1, deviceId: 2, sessionDate: "2026-07-01T00:00:00.000Z", title: "Test", date: "1 Jul 2026", mode: "Intermiten", duration: "1 jam" },
+    const sessions: any = [
+      { id: 1, userId: 1, deviceId: 2, sessionDate: "2026-07-01T00:00:00.000Z", title: "Test", date: "1 Jul 2026", mode: "Intermiten", duration: "1 jam", createdAt: new Date() },
     ];
     mockPrisma.history.findMany.mockImplementation(() => sessions);
 
