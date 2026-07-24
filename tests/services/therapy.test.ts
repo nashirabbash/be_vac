@@ -1,6 +1,6 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test";
 import { createTherapySession, getTherapySessions } from "../../src/services/therapy";
-import { mockPrisma } from "../utils";
+import { mockPrisma, mockSessions } from "../utils";
 
 mock.module("../../src/db", () => ({
   prisma: mockPrisma,
@@ -41,14 +41,11 @@ describe("createTherapySession", () => {
 
 describe("getTherapySessions", () => {
   it("returns all sessions for a user when no year filter", async () => {
-    const sessions = [
-      { id: 1, userId: 1, deviceId: 2, sessionDate: "2026-07-01T00:00:00.000Z", title: "Test", date: "1 Jul 2026", mode: "Intermiten", duration: "1 jam" },
-    ];
-    mockPrisma.history.findMany.mockImplementation(() => sessions);
+    mockPrisma.history.findMany.mockImplementation(() => mockSessions);
 
     const result = await getTherapySessions(1);
 
-    expect(result).toEqual(sessions);
+    expect(result).toEqual(mockSessions);
     expect(mockPrisma.history.findMany).toHaveBeenCalledWith({
       where: { userId: 1 },
       orderBy: { sessionDate: "desc" },

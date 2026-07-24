@@ -24,7 +24,7 @@ export const loggerMiddleware = (app: Elysia) => app
     logger.debug({ response }, `[onAfterHandle] ${request.method} ${request.url}`);
   })
   .onAfterResponse(({ request, response, set }) => {
-    const status = set.status || 200;
+    const status = typeof set.status === 'number' ? set.status : 200;
     if (status >= 500) {
       logger.error({ status, headers: set.headers }, `[FAILED] 💥 Server Error: ${request.method} ${request.url} - Status: ${status}`);
     } else if (status >= 400) {

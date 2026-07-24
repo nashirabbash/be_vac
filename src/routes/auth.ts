@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia";
 import { jwt } from "@elysiajs/jwt";
-import { registerUser, loginUser } from "../services/auth";
+import { registerWithDevice, loginUser, checkCanLogout } from "../services/auth";
+import { authMiddleware } from "../middleware/auth";
 
 const jwtSecret = process.env.JWT_SECRET;
 if (!jwtSecret) throw new Error("JWT_SECRET environment variable is not defined");
@@ -19,13 +20,25 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
   )
   .post(
     "/register",
-    async ({ body, set }) => {
+    async ({ body, set, jwt }) => {
       try {
-        const user = await registerUser(body);
+        const result = await registerWithDevice(body);
+        
+        const token = await jwt.sign({
+          userId: result.id,
+          username: result.username,
+          deviceId: result.deviceId,
+        });
+
         set.status = 201;
         return {
           message: "Registration successful",
-          user,
+          token,
+          deviceId: result.deviceId,
+          user: {
+            id: result.id,
+            username: result.username,
+          },
         };
       } catch (error: any) {
         set.status = 400;
@@ -36,6 +49,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       body: t.Object({
         name: t.String(),
         hospitalName: t.String(),
+        qrKey: t.String(),
         ...credentialsSchema,
       }),
     }
@@ -57,5 +71,18 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     },
     {
       body: t.Object(credentialsSchema),
+    }
+  )
+  .use(authMiddleware)
+  .post(
+    "/logout",
+    async ({ user, set }) => {
+      try {
+        await checkCanLogout(user!.userId);
+        return { message: "Logged out successfully" };
+      } catch (error: any) {
+        set.status = 400;
+        return { error: error.message || "Logout failed." };
+      }
     }
   );

@@ -1,28 +1,38 @@
 import { prisma } from "../db";
+import { validateDeviceByQr, createDeviceBindingTx } from "./device";
 
 export interface RegisterUserInput {
   name: string;
   hospitalName: string;
   username: string;
   password: string;
+  qrKey: string;
 }
 
-export async function registerUser(data: RegisterUserInput) {
-  const { name, hospitalName, username, password } = data;
+export async function registerWithDevice(data: RegisterUserInput) {
+  const { name, hospitalName, username, password, qrKey } = data;
+
+  const device = await validateDeviceByQr(qrKey);
 
   // Hash the password using Bun's built-in bcrypt/argon2 hashing
   const passwordHash = await Bun.password.hash(password);
 
-  const newUser = await prisma.user.create({
-    data: {
-      name,
-      hospitalName,
-      username,
-      passwordHash,
-    },
+  const newUser = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        name,
+        hospitalName,
+        username,
+        passwordHash,
+      },
+    });
+
+    await createDeviceBindingTx(tx, user.id, device.id);
+
+    return user;
   });
 
-  return { id: newUser.id, username: newUser.username };
+  return { id: newUser.id, username: newUser.username, deviceId: device.id };
 }
 
 export interface LoginUserInput {
@@ -60,4 +70,17 @@ export async function loginUser(data: LoginUserInput) {
     deviceId: activeDeviceLink ? activeDeviceLink.deviceId : null,
     username: user.username,
   };
+}
+
+export async function checkCanLogout(userId: number) {
+  const activeDeviceLink = await prisma.trDeviceUser.findFirst({
+    where: {
+      userId,
+      isActive: true,
+    },
+  });
+
+  if (activeDeviceLink) {
+    throw new Error("Please disconnect the device before logging out.");
+  }
 }
