@@ -24,7 +24,7 @@ Built with high performance and type safety in mind using **Bun**, **ElysiaJS**,
 
 ## Overview
 
-`be_vac` serves as the core backend engine powering the VAC Stechoq medical application ecosystem. It handles user authentication, device provisioning and binding via QR codes, live GPS location monitoring of active devices, and secure storage of therapy session logs transmitted by hardware devices via Bluetooth Low Energy (BLE) / Mobile client integration.
+`be_vac` serves as the core backend REST API service powering the VAC Stechoq medical application ecosystem. It handles user authentication, device provisioning and binding via QR codes, live GPS location monitoring of active devices, and secure storage of therapy session logs. Note that `be_vac` is a pure HTTP REST API; therapy session logs recorded by hardware devices via Bluetooth Low Energy (BLE) are synchronized and uploaded to this backend by the mobile client application.
 
 ---
 
@@ -60,7 +60,7 @@ Built with high performance and type safety in mind using **Bun**, **ElysiaJS**,
 
 ## Environment Variables
 
-Create a `.env` file in the project root directory with the following environment variables:
+Copy `.env.example` to `.env` in the project root directory and configure the following variables:
 
 ```env
 # Database connection string (PostgreSQL)
@@ -84,10 +84,10 @@ bun install
 
 ### 2. Configure Environment
 
-Create a `.env` file with your database URL and JWT secret key:
+Copy `.env.example` to `.env` and populate your database credentials and JWT secret key:
 
 ```bash
-cp .env.example .env # if applicable, or populate .env manually
+cp .env.example .env
 ```
 
 ### 3. Run Database Migrations & Generate Prisma Client
@@ -131,7 +131,7 @@ All `/api` endpoints requiring authentication expect the HTTP Header:
 | `POST` | `/api/therapy-sessions` | Upload & record new therapy session | Yes |
 | `GET` | `/api/therapy-sessions` | Get user therapy session history (supports `?year=YYYY`) | Yes |
 
-*For complete payload and response specifications, refer to [API_CONTRACT.md](file:///home/broo/Documents/apps/be_vac/API_CONTRACT.md) or visit `/docs`.*
+*For complete payload and response specifications, refer to [API_CONTRACT.md](API_CONTRACT.md) or visit `/docs`.*
 
 ---
 
@@ -141,6 +141,7 @@ The repository follows a clean 3-layer architecture:
 
 ```text
 be_vac/
+├── docs/                     # Domain documentation and issue tracker notes
 ├── prisma/
 │   └── schema.prisma         # Database models and relations
 ├── src/
@@ -162,7 +163,10 @@ be_vac/
 │   └── utils/                # Utility helpers (e.g. QR key resolution)
 ├── tests/                    # Integration and unit test suite
 │   ├── routes/               # API route endpoint tests
-│   └── services/             # Service unit tests
+│   ├── services/             # Service unit tests
+│   ├── setup.ts              # Global test configuration and setup
+│   └── utils.ts              # Test helper utilities and Prisma mocks
+├── .env.example              # Environment variable template
 ├── API_CONTRACT.md           # API specification contract document
 └── README.md                 # Project documentation
 ```
