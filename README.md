@@ -79,29 +79,29 @@ flowchart TB
     accDescr: High-level diagram showing interaction between hardware, mobile app, ElysiaJS backend, and PostgreSQL.
 
     subgraph hardware_layer["Hardware & Edge Layer"]
-        vac_device["📟 VAC Stechoq Device"]
+        vac_device["VAC Stechoq Device"]
     end
 
     subgraph client_layer["Client Layer"]
-        mobile_app["📱 Mobile Application"]
+        mobile_app["Mobile Application"]
     end
 
     subgraph backend_layer["Backend Layer (be_vac / Bun + ElysiaJS)"]
-        api_router["⚡ ElysiaJS Router & CORS"]
-        jwt_auth["🔐 JWT & Auth Middleware"]
-        pino_logger["📜 Pino Logger Middleware"]
+        api_router["ElysiaJS Router & CORS"]
+        jwt_auth["JWT & Auth Middleware"]
+        pino_logger["Pino Logger Middleware"]
 
         subgraph services["Services Layer"]
-            auth_service["👤 Auth Service"]
-            device_service["📡 Device Service"]
-            therapy_service["🩺 Therapy Service"]
+            auth_service["Auth Service"]
+            device_service["Device Service"]
+            therapy_service["Therapy Service"]
         end
 
-        prisma_orm["💎 Prisma ORM Client"]
+        prisma_orm["Prisma ORM Client"]
     end
 
     subgraph database_layer["Database Layer"]
-        postgres_db[("🐘 PostgreSQL Database")]
+        postgres_db[("PostgreSQL Database")]
     end
 
     vac_device -- "1. Sync Therapy Data (BLE)" --> mobile_app
@@ -136,12 +136,12 @@ sequenceDiagram
     accTitle: End-to-End Therapy Session Upload Sequence
     accDescr: How a therapy session is recorded on a VAC device, synced via BLE to the mobile app, and posted to the backend API.
 
-    actor User as 👤 Patient / Nurse
-    participant Device as 📟 VAC Device
-    participant Mobile as 📱 Mobile App
-    participant Middleware as 🛡️ Auth Middleware
-    participant Service as ⚙️ Therapy Service
-    participant DB as 🐘 PostgreSQL DB
+    actor User as Patient / Nurse
+    participant Device as VAC Device
+    participant Mobile as Mobile App
+    participant Middleware as Auth Middleware
+    participant Service as Therapy Service
+    participant DB as PostgreSQL DB
 
     User->>Device: Execute therapy session
     Device-->>Device: Record duration, mode & session date
@@ -175,11 +175,11 @@ sequenceDiagram
     accTitle: Device QR Binding and Token Issue Sequence
     accDescr: User registration or device binding via QR code scanning and JWT reissue.
 
-    actor User as 👤 User / Medical Staff
-    participant Mobile as 📱 Mobile App
-    participant QRResolver as 🔍 QR Resolver
-    participant DeviceService as 📡 Device Service
-    participant DB as 🐘 PostgreSQL DB
+    actor User as User / Medical Staff
+    participant Mobile as Mobile App
+    participant QRResolver as QR Resolver
+    participant DeviceService as Device Service
+    participant DB as PostgreSQL DB
 
     User->>Mobile: Scan QR Code label on VAC Device
     Mobile->>QRResolver: Parse QR Payload
