@@ -11,12 +11,19 @@ Built with high performance and type safety in mind using **Bun**, **ElysiaJS**,
 - [Overview](#overview)
 - [Tech Stack](#tech-stack)
 - [Features](#features)
+- [System Architecture & Data Flow](#system-architecture--data-flow)
+  - [System Component Diagram](#system-component-diagram)
+  - [End-to-End (E2E) Therapy Sync Flow](#end-to-end-e2e-therapy-sync-flow)
+  - [Device QR Binding & Auth Sequence](#device-qr-binding--auth-sequence)
 - [Prerequisites](#prerequisites)
 - [Environment Variables](#environment-variables)
 - [Quick Start](#quick-start)
 - [API Documentation](#api-documentation)
+  - [Primary Endpoints Summary](#primary-endpoints-summary)
 - [Project Architecture](#project-architecture)
 - [Database Schema](#database-schema)
+  - [Entity Relationship (ER) Diagram](#entity-relationship-er-diagram)
+  - [Device Binding State Lifecycle](#device-binding-state-lifecycle)
 - [Testing](#testing)
 - [License](#license)
 
@@ -24,7 +31,10 @@ Built with high performance and type safety in mind using **Bun**, **ElysiaJS**,
 
 ## Overview
 
-`be_vac` serves as the core backend REST API service powering the VAC Stechoq medical application ecosystem. It handles user authentication, device provisioning and binding via QR codes, live GPS location monitoring of active devices, and secure storage of therapy session logs. Note that `be_vac` is a pure HTTP REST API; therapy session logs recorded by hardware devices via Bluetooth Low Energy (BLE) are synchronized and uploaded to this backend by the mobile client application.
+`be_vac` serves as the core backend REST API service powering the VAC Stechoq medical application ecosystem. It handles user authentication, device provisioning and binding via QR codes, live GPS location monitoring of active devices, and secure storage of therapy session logs. 
+
+> [!NOTE]
+> `be_vac` is a pure HTTP REST API service. Therapy session logs recorded by hardware devices via Bluetooth Low Energy (BLE) are synchronized locally by the mobile client application and subsequently uploaded to this backend via REST API endpoints.
 
 ---
 
@@ -43,11 +53,148 @@ Built with high performance and type safety in mind using **Bun**, **ElysiaJS**,
 
 ## Features
 
-- 🔐 **Authentication & Authorization**: Secure JWT-based registration, login, and token management.
-- 📱 **QR Code Device Binding**: Automatic device lookup, validation, and user-device binding (`TrDeviceUser`).
-- 📍 **Live Device Location Tracking**: Query active device GPS coordinates and online status.
+- 🔐 **Authentication & Authorization**: Secure JWT-based registration, login, token refresh, and logout.
+- 📱 **QR Code Device Binding**: Automatic device validation, QR key resolution, and user-device mapping (`TrDeviceUser`).
+- 📍 **Live Device Location Tracking**: Query active device GPS telemetry and online connectivity status.
 - 🩺 **Therapy Session Management**: Upload, store, and query historical therapy logs filtered by year.
-- 📖 **Interactive Swagger UI**: Auto-generated interactive API docs served at `/docs`.
+- 📖 **Interactive Swagger UI**: Auto-generated interactive API documentation served at `/docs`.
+
+---
+
+## System Architecture & Data Flow
+
+### System Component Diagram
+
+The following architecture diagram illustrates the end-to-end separation of concerns between hardware, mobile client, backend layers, and the database storage:
+
+```mermaid
+flowchart TB
+    accTitle: System Architecture and Data Flow
+    accDescr: High-level architectural diagram showing interaction between hardware, mobile app, ElysiaJS backend server, and PostgreSQL database.
+
+    subgraph hardware_layer["Hardware & Edge Layer"]
+        vac_device["📟 VAC Stechoq Device"]
+    end
+
+    subgraph client_layer["Client Layer"]
+        mobile_app["📱 Mobile Application"]
+    end
+
+    subgraph backend_layer["Backend Layer (be_vac / Bun + ElysiaJS)"]
+        api_router["⚡ ElysiaJS Router & CORS"]
+        jwt_auth["🔐 JWT & Auth Middleware"]
+        pino_logger["📜 Pino Logger Middleware"]
+        
+        subgraph services["Services Layer"]
+            auth_service["👤 Auth Service"]
+            device_service["📡 Device Service"]
+            therapy_service["🩺 Therapy Service"]
+        end
+        
+        prisma_orm["💎 Prisma ORM Client"]
+    end
+
+    subgraph database_layer["Database Layer"]
+        postgres_db[("🐘 PostgreSQL Database")]
+    end
+
+    vac_device -- "1. Sync Therapy Data (BLE)" --> mobile_app
+    mobile_app -- "2. HTTP REST Request + Bearer JWT" --> api_router
+    api_router --> jwt_auth
+    jwt_auth --> pino_logger
+    pino_logger --> auth_service
+    pino_logger --> device_service
+    pino_logger --> therapy_service
+    auth_service --> prisma_orm
+    device_service --> prisma_orm
+    therapy_service --> prisma_orm
+    prisma_orm --> postgres_db
+
+    classDef hw fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#991b1b
+    classDef client fill:#e0e7ff,stroke:#6366f1,stroke-width:2px,color:#3730a3
+    classDef server fill:#dbeafe,stroke:#3b82f6,stroke-width:2px,color:#1e40af
+    classDef db fill:#dcfce7,stroke:#22c55e,stroke-width:2px,color:#166534
+
+    class vac_device hw
+    class mobile_app client
+    class api_router,jwt_auth,pino_logger,auth_service,device_service,therapy_service,prisma_orm server
+    class postgres_db db
+```
+
+---
+
+### End-to-End (E2E) Therapy Sync Flow
+
+Sequence diagram demonstrating how a patient therapy session is recorded on the physical VAC unit, retrieved by the mobile application via Bluetooth Low Energy (BLE), and securely saved to the database via REST API:
+
+```mermaid
+sequenceDiagram
+    accTitle: End-to-End Therapy Session Upload Sequence
+    accDescr: Sequence diagram illustrating how a therapy session is recorded on a VAC device, synced via BLE to the mobile app, and posted to the backend API.
+
+    actor User as 👤 Patient / Nurse
+    participant Device as 📟 VAC Device
+    participant Mobile as 📱 Mobile App
+    participant Middleware as 🛡️ Auth Middleware
+    participant Service as ⚙️ Therapy Service
+    participant DB as 🐘 PostgreSQL DB
+
+    User->>Device: Execute therapy session
+    Device-->>Device: Record duration, mode & session date
+    User->>Mobile: Connect to device via BLE
+    Device->>Mobile: Transfer therapy session log payload (BLE)
+    Mobile->>Mobile: Attach current device GPS coordinates (lat, long)
+    Mobile->>Middleware: POST /api/therapy-sessions (Bearer JWT + Payload)
+    
+    alt Invalid or Missing JWT Token
+        Middleware-->>Mobile: 401 Unauthorized
+    else Valid JWT Token
+        Middleware->>Middleware: Extract userId & active deviceId from JWT
+        alt deviceId is Null (No Active Device Bound)
+            Middleware-->>Mobile: 403 Device Required
+        else deviceId is Present
+            Middleware->>Service: createTherapySession({userId, deviceId, ...body})
+            Service->>DB: INSERT into History table
+            DB-->>Service: Created Session Record
+            Service-->>Mobile: 201 Created { status: "ok", data: session }
+            Mobile-->>User: Display session sync confirmation
+        end
+    end
+```
+
+---
+
+### Device QR Binding & Auth Sequence
+
+Sequence diagram detailing user registration or active device binding via QR code scanning and JWT reissue:
+
+```mermaid
+sequenceDiagram
+    accTitle: Device QR Binding and Token Issue Sequence
+    accDescr: Sequence diagram demonstrating user registration or device binding via QR code scanning and JWT reissue.
+
+    actor User as 👤 User / Medical Staff
+    participant Mobile as 📱 Mobile App
+    participant QRResolver as 🔍 QR Resolver
+    participant DeviceService as 📡 Device Service
+    participant DB as 🐘 PostgreSQL DB
+
+    User->>Mobile: Scan QR Code label on VAC Device
+    Mobile->>QRResolver: Parse QR Payload
+    QRResolver-->>Mobile: Extracted qrKey (e.g. B002U)
+    Mobile->>DeviceService: POST /api/device/bind { qrKey } (Bearer JWT)
+    DeviceService->>DB: Query Device by qrKey
+    alt Device Not Found or Not Produced
+        DB-->>DeviceService: Null / isProduced = false
+        DeviceService-->>Mobile: 400 Bad Request ("Device not found or invalid")
+    else Device Valid
+        DB-->>DeviceService: Valid Device Record (id: newDeviceId)
+        DeviceService->>DB: Update existing user bindings (isActive = false)
+        DeviceService->>DB: Insert new TrDeviceUser record (isActive = true)
+        DeviceService-->>Mobile: Reissue JWT Token with updated deviceId
+        Mobile-->>User: Device successfully bound & active!
+    end
+```
 
 ---
 
@@ -175,19 +322,87 @@ be_vac/
 
 ## Database Schema
 
-Key models defined in `prisma/schema.prisma`:
+### Entity Relationship (ER) Diagram
 
-- **User**: User accounts (name, hospitalName, username, passwordHash).
-- **Device**: Physical VAC devices tracked by `qrKey`, produced status (`isProduced`), and telemetry (`latitude`, `longitude`, `isOnline`, `lastSeenAt`).
-- **TrDeviceUser**: Relational mapping between Users and Devices with active state tracking (`isActive`).
-- **History**: Recorded therapy sessions tied to a user and device (date, title, mode, duration).
+```mermaid
+erDiagram
+    User ||--o{ TrDeviceUser : "has bindings"
+    User ||--o{ History : "owns therapy logs"
+    Device ||--o{ TrDeviceUser : "bound to users"
+    Device ||--o{ History : "records therapy logs"
 
-Useful Prisma commands:
+    User {
+        Int id PK
+        String name
+        String hospitalName
+        String username UK
+        String passwordHash
+        DateTime createdAt
+        DateTime updatedAt
+    }
 
-```bash
-bunx prisma studio       # Open interactive database GUI in browser
-bunx prisma migrate dev  # Create and execute database migrations
-bunx prisma generate     # Regenerate Prisma Client TypeScript types
+    Device {
+        Int id PK
+        String qrKey UK
+        Boolean isProduced
+        Float latitude
+        Float longitude
+        DateTime lastSeenAt
+        Boolean isOnline
+        DateTime createdAt
+        DateTime updatedAt
+    }
+
+    TrDeviceUser {
+        Int id PK
+        Int userId FK
+        Int deviceId FK
+        Boolean isActive
+        DateTime createdAt
+        DateTime updatedAt
+    }
+
+    History {
+        Int id PK
+        Int userId FK
+        Int deviceId FK
+        String sessionDate
+        String title
+        String date
+        String mode
+        String duration
+        DateTime createdAt
+    }
+```
+
+---
+
+### Device Binding State Lifecycle
+
+```mermaid
+stateDiagram-v2
+    accTitle: Device Binding State Lifecycle
+    accDescr: State machine diagram detailing the active and inactive lifecycle of user-device relationships.
+
+    [*] --> Unbound: User Registered (No Active Device)
+    
+    Unbound --> BoundActive: Scan QR & POST /api/device/bind
+    
+    state BoundActive {
+        [*] --> ActiveState: TrDeviceUser.isActive = true
+        ActiveState --> RecordingTherapy: POST /api/therapy-sessions
+        RecordingTherapy --> ActiveState: Log Saved to History
+        ActiveState --> LocationTracking: GET /api/device/live-locations
+        LocationTracking --> ActiveState: Telemetry Returned
+    }
+
+    BoundActive --> BoundInactive: User Binds New Device QR
+    
+    state BoundInactive {
+        [*] --> InactiveState: TrDeviceUser.isActive = false
+    }
+
+    BoundInactive --> BoundActive: Re-bind Previous Device QR
 ```
 
 ---
