@@ -23,7 +23,7 @@ export const loggerMiddleware = (app: Elysia) => app
     const { request, response } = ctx as any;
     logger.debug({ response }, `[onAfterHandle] ${request.method} ${request.url}`);
   })
-  .onAfterResponse(({ request, response, set }) => {
+  .onAfterResponse(({ request, set }) => {
     const status = typeof set.status === 'number' ? set.status : 200;
     if (status >= 500) {
       logger.error({ status, headers: set.headers }, `[FAILED] 💥 Server Error: ${request.method} ${request.url} - Status: ${status}`);
@@ -34,7 +34,10 @@ export const loggerMiddleware = (app: Elysia) => app
     }
   })
   .onError(({ request, error, code }) => {
-    const errorMsg = error instanceof Error ? error.message : (error as any).message || String(error);
+    const errorMsg =
+      error instanceof Error
+        ? error.message
+        : (error as any)?.message || (typeof error === "object" && error !== null ? JSON.stringify(error) : String(error));
     logger.error({ err: error, code }, `[FAILED] ❌ Gagal: ${request.method} ${request.url} - Error: ${errorMsg}`);
   })
   .onStop(() => {

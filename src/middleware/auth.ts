@@ -20,7 +20,7 @@ export const authMiddleware = new Elysia({ name: "auth-middleware" })
       return {
         user: payload ? (payload as { userId: number; deviceId: number | null; username: string }) : null,
       };
-    } catch (err) {
+    } catch {
       return { user: null };
     }
   })

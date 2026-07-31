@@ -8,7 +8,7 @@ export async function validateDeviceByQr(rawQr: string) {
     where: { qrKey },
   });
 
-  if (!device || !device.isProduced) {
+  if (!device?.isProduced) {
     throw new Error("Device not found.");
   }
   return device;
