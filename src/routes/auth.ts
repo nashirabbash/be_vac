@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { jwt } from "@elysiajs/jwt";
-import { registerWithDevice, loginUser, checkCanLogout } from "../services/auth";
+import { registerWithDevice, loginUser, logoutUser } from "../services/auth";
 import { authMiddleware } from "../middleware/auth";
 
 const jwtSecret = process.env.JWT_SECRET;
@@ -78,7 +78,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     "/logout",
     async ({ user, set }) => {
       try {
-        await checkCanLogout(user!.userId);
+        await logoutUser(user!.userId);
         return { message: "Logged out successfully" };
       } catch (error: any) {
         set.status = 400;

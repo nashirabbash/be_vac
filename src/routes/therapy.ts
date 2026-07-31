@@ -26,6 +26,8 @@ export const therapyRoutes = new Elysia({ prefix: "/therapy-sessions" })
         date: t.String(),
         mode: t.String(),
         duration: t.String(),
+        latitude: t.Optional(t.Number()),
+        longitude: t.Optional(t.Number()),
       }),
     }
   )

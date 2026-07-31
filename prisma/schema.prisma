@@ -21,11 +21,15 @@ model User {
 }
 
 model Device {
-  id         Int      @id @default(autoincrement())
-  qrKey      String   @unique
-  isProduced Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id         Int       @id @default(autoincrement())
+  qrKey      String    @unique
+  isProduced Boolean   @default(true)
+  latitude   Float?
+  longitude  Float?
+  lastSeenAt DateTime?
+  isOnline   Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   deviceUsers TrDeviceUser[]
   histories   History[]

@@ -72,15 +72,9 @@ export async function loginUser(data: LoginUserInput) {
   };
 }
 
-export async function checkCanLogout(userId: number) {
-  const activeDeviceLink = await prisma.trDeviceUser.findFirst({
-    where: {
-      userId,
-      isActive: true,
-    },
+export async function logoutUser(userId: number) {
+  await prisma.trDeviceUser.updateMany({
+    where: { userId, isActive: true },
+    data: { isActive: false },
   });
-
-  if (activeDeviceLink) {
-    throw new Error("Please disconnect the device before logging out.");
-  }
 }

@@ -1,4 +1,4 @@
-# AGENTS.md
+# CLAUDE.md
 
 These rules apply to every task in this project unless explicitly overridden.
 Bias: caution over speed on non-trivial work. Use judgment on trivial tasks.
@@ -162,7 +162,6 @@ be_vac/
 - **Routes** (`src/routes/`) — HTTP handlers, Elysia decorators, request validation with TypeBox (`t`)
 - **Services** (`src/services/`) — Business logic, Prisma DB calls, error handling
 - **Database** (`prisma/schema.prisma`) — Database schema definitions and client
-
 
 ## Entry point
 

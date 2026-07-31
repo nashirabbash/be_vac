@@ -79,3 +79,47 @@ describe("POST /device/bind", () => {
     expect(payload.username).toBe("testuser");
   });
 });
+
+describe("GET /device/live-locations", () => {
+  it("rejects request without authorization header", async () => {
+    const res = await deviceRoutes.handle(
+      new Request("http://localhost/device/live-locations")
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 200 with list of live device locations for authenticated user", async () => {
+    mockPrisma.device.findMany.mockResolvedValue([
+      {
+        id: 1,
+        qrKey: "BTPTHI",
+        latitude: -7.2756,
+        longitude: 112.7912,
+        lastSeenAt: new Date(),
+        isOnline: true,
+        deviceUsers: [
+          {
+            user: { id: 1, name: "Rafa", hospitalName: "RSUD Soetomo", username: "rafa" },
+          },
+        ],
+        histories: [
+          { mode: "Continuous", title: "Continuous 125 mmHg" },
+        ],
+      },
+    ]);
+
+    const res = await deviceRoutes.handle(
+      new Request("http://localhost/device/live-locations", {
+        headers: { Authorization: `Bearer ${validToken}` },
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.status).toBe("ok");
+    expect(body.data.length).toBe(1);
+    expect(body.data[0].qrKey).toBe("BTPTHI");
+    expect(body.data[0].isOnline).toBe(true);
+    expect(body.data[0].currentUser.name).toBe("Rafa");
+  });
+});

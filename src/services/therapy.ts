@@ -10,12 +10,35 @@ export interface CreateTherapyPayload {
   date: string;
   mode: string;
   duration: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export async function createTherapySession(payload: CreateTherapyPayload) {
+  const { latitude, longitude, ...sessionData } = payload;
   const session = await prisma.history.create({
-    data: payload,
+    data: sessionData,
   });
+
+  if (latitude !== undefined && longitude !== undefined) {
+    await prisma.device.update({
+      where: { id: payload.deviceId },
+      data: {
+        latitude,
+        longitude,
+        lastSeenAt: new Date(),
+        isOnline: true,
+      },
+    });
+  } else {
+    await prisma.device.update({
+      where: { id: payload.deviceId },
+      data: {
+        lastSeenAt: new Date(),
+        isOnline: true,
+      },
+    });
+  }
 
   logger.info({ sessionId: session.id, title: session.title }, "Therapy session created");
   return session;

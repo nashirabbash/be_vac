@@ -1,9 +1,13 @@
 import { Elysia, t } from "elysia";
 import { authMiddleware } from "../middleware/auth";
-import { bindDevice } from "../services/device";
+import { bindDevice, getLiveLocations } from "../services/device";
 
 export const deviceRoutes = new Elysia({ prefix: "/device" })
   .use(authMiddleware)
+  .get("/live-locations", async () => {
+    const locations = await getLiveLocations();
+    return { status: "ok", data: locations };
+  })
   .post(
     "/bind",
     async ({ body, user, jwt, set }) => {

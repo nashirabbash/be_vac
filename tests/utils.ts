@@ -33,7 +33,7 @@ export const mockPrisma = {
     })),
     findMany: mock((_args?: any) => [] as History[]),
   },
-  device: { findUnique: mock() },
+  device: { findUnique: mock(), update: mock((args?: any) => ({ id: args?.where?.id || 1, ...args?.data })), findMany: mock(() => []) },
   trDeviceUser: { updateMany: mock(), create: mock() },
   $transaction: mock(async (queries) => {
     if (typeof queries === "function") {
