@@ -4,6 +4,7 @@ import { cors } from "@elysiajs/cors";
 import { therapyRoutes } from "./routes/therapy";
 import { authRoutes } from "./routes/auth";
 import { deviceRoutes } from "./routes/device";
+import { auditRoutes } from "./routes/audit";
 import { loggerMiddleware } from "./middleware/loggerMiddleware";
 
 const app = new Elysia()
@@ -16,6 +17,7 @@ const app = new Elysia()
       .use(authRoutes)
       .use(therapyRoutes)
       .use(deviceRoutes)
+      .use(auditRoutes)
       .use(new Elysia({ prefix: "/devices" }).use(deviceRoutes))
   )
   .listen({ port: 3000, hostname: "0.0.0.0" });
