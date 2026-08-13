@@ -72,4 +72,9 @@ model AuditLog {
   details      String?
   timestamp    DateTime @default(now())
   createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([deviceId])
+  @@index([timestamp])
+  @@index([action])
 }

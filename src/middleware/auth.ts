@@ -18,7 +18,7 @@ export const authMiddleware = new Elysia({ name: "auth-middleware" })
     try {
       const payload = await jwt.verify(token);
       return {
-        user: payload ? (payload as { userId: number; deviceId: number | null; username: string }) : null,
+        user: payload ? (payload as { userId: number; deviceId: number | null; username: string; hospitalName?: string }) : null,
       };
     } catch {
       return { user: null };
