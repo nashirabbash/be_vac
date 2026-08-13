@@ -48,4 +48,15 @@ export const mockPrisma = {
     })),
     findUnique: mock(),
   },
+  auditLog: {
+    create: mock((args: { data: Record<string, unknown> }) => ({
+      id: 1,
+      timestamp: new Date(),
+      createdAt: new Date(),
+      ...args.data,
+    })),
+    createMany: mock((args: { data: Record<string, unknown>[] }) => ({
+      count: args.data.length,
+    })),
+  },
 };
