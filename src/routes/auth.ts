@@ -74,6 +74,12 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     }
   )
   .use(authMiddleware)
+  .get(
+    "/me",
+    async ({ user }) => {
+      return { status: "ok", user };
+    }
+  )
   .post(
     "/logout",
     async ({ user, set }) => {
