@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia";
 import { jwt } from "@elysiajs/jwt";
 import { registerWithDevice, loginUser, logoutUser } from "../services/auth";
 import { authMiddleware } from "../middleware/auth";
+import { prisma } from "../db";
 
 const jwtSecret = process.env.JWT_SECRET;
 if (!jwtSecret) throw new Error("JWT_SECRET environment variable is not defined");
@@ -77,7 +78,32 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
   .get(
     "/me",
     async ({ user }) => {
-      return { status: "ok", user };
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user!.userId },
+        select: { id: true, name: true, hospitalName: true, username: true },
+      });
+      return {
+        status: "ok",
+        user: {
+          id: dbUser?.id ?? user!.userId,
+          name: dbUser?.name ?? "",
+          hospitalName: dbUser?.hospitalName ?? "",
+          username: dbUser?.username ?? user!.username,
+          deviceId: user!.deviceId,
+        },
+      };
+    },
+    {
+      response: t.Object({
+        status: t.String(),
+        user: t.Object({
+          id: t.Number(),
+          name: t.String(),
+          hospitalName: t.String(),
+          username: t.String(),
+          deviceId: t.Nullable(t.Number()),
+        }),
+      }),
     }
   )
   .post(
