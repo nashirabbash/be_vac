@@ -25,6 +25,7 @@ Built with **Bun**, **ElysiaJS**, and **Prisma ORM** on **PostgreSQL**.
   - [Authentication](#authentication)
   - [Device Management](#device-management)
   - [Therapy Sessions](#therapy-sessions)
+  - [Audit Logs](#audit-logs)
   - [Error Response Catalogue](#error-response-catalogue)
 - [Project Architecture](#project-architecture)
 - [Database Schema](#database-schema)
@@ -340,12 +341,14 @@ Authorization: Bearer <jwt_token>
 | :---: | :--- | :--- | :---: |
 | `POST` | `/api/auth/register` | Register a new user and bind a device via QR key | No |
 | `POST` | `/api/auth/login` | Authenticate and receive a JWT token | No |
+| `GET` | `/api/auth/me` | Retrieve current authenticated user profile | Yes |
 | `POST` | `/api/auth/logout` | Deactivate current device binding and end session | Yes |
 | `POST` | `/api/device/bind` | Bind or switch the active device via QR key | Yes |
 | `GET` | `/api/device/live-locations` | Get live GPS telemetry for all devices | Yes |
 | `GET` | `/api/devices/live-locations` | Alias for the above endpoint | Yes |
 | `POST` | `/api/therapy-sessions` | Upload and record a new therapy session | Yes |
 | `GET` | `/api/therapy-sessions` | Get therapy session history (supports `?year=YYYY`) | Yes |
+| `POST` | `/api/audit-logs` | Record single or batch audit activity logs | Yes |
 
 ---
 
@@ -415,6 +418,35 @@ Authenticates a user and returns a JWT token. The token payload includes `userId
 
 ```json
 { "error": "Invalid username or password." }
+```
+
+---
+
+#### GET `/api/auth/me`
+
+Retrieves profile information for the authenticated user along with their active `deviceId`.
+
+**Request Body** — None
+
+**Success Response — `200 OK`**
+
+```json
+{
+  "status": "ok",
+  "user": {
+    "id": 1,
+    "name": "John Doe",
+    "hospitalName": "RSUD Sehat",
+    "username": "johndoe",
+    "deviceId": 2
+  }
+}
+```
+
+**Error Response — `401 Unauthorized`**
+
+```json
+{ "error": "Unauthorized" }
 ```
 
 ---
@@ -525,9 +557,14 @@ Uploads and records a therapy session log. The `userId` and `deviceId` are extra
   "title": "Sesi Terapi Pagi",
   "date": "31 Jul 2026",
   "mode": "Kontinyu",
-  "duration": "45 Menit"
+  "duration": "45 Menit",
+  "latitude": -6.2088,
+  "longitude": 106.8456
 }
 ```
+
+> [!NOTE]
+> `latitude` and `longitude` are optional numeric fields for recording session location.
 
 **Success Response — `201 Created`**
 
@@ -569,6 +606,67 @@ Returns all therapy session history for the authenticated user. Supports optiona
 
 ---
 
+### Audit Logs
+
+#### POST `/api/audit-logs`
+
+Records single or batch user/device audit activity logs. Unspecified user/device metadata will automatically fall back to values from the authenticated session context.
+
+**Request Body — Single Item**
+
+```json
+{
+  "action": "DEVICE_BOUND",
+  "details": "Bound via QR Key B002U",
+  "timestamp": "2026-08-13T13:30:00.000Z"
+}
+```
+
+**Success Response — `200 OK` (Single)**
+
+```json
+{
+  "status": "ok",
+  "data": {
+    "id": 1,
+    "userId": 1,
+    "username": "johndoe",
+    "hospitalName": "RSUD Sehat",
+    "deviceId": "2",
+    "action": "DEVICE_BOUND",
+    "details": "Bound via QR Key B002U",
+    "timestamp": "2026-08-13T13:30:00.000Z",
+    "createdAt": "2026-08-13T13:30:00.000Z"
+  }
+}
+```
+
+**Request Body — Batch Array**
+
+```json
+[
+  {
+    "action": "START_THERAPY",
+    "details": "Session started in Kontinyu mode"
+  },
+  {
+    "action": "END_THERAPY",
+    "details": "Session ended after 45 minutes"
+  }
+]
+```
+
+**Success Response — `200 OK` (Batch)**
+
+```json
+{
+  "status": "ok",
+  "count": 2
+}
+```
+
+---
+
 ### Error Response Catalogue
 
 All error responses follow a consistent structure:
@@ -604,10 +702,12 @@ be_vac/
 │   │   ├── auth.ts             # JWT authentication middleware
 │   │   └── loggerMiddleware.ts # HTTP request/response logging middleware
 │   ├── routes/                 # HTTP handlers, Elysia decorators, TypeBox schemas
-│   │   ├── auth.ts             # /api/auth (/register, /login, /logout)
+│   │   ├── audit.ts            # /api/audit-logs (POST)
+│   │   ├── auth.ts             # /api/auth (/register, /login, /me, /logout)
 │   │   ├── device.ts           # /api/device (/bind, /live-locations)
 │   │   └── therapy.ts          # /api/therapy-sessions (POST, GET)
 │   ├── services/               # Business logic & Prisma DB operations
+│   │   ├── audit.ts
 │   │   ├── auth.ts
 │   │   ├── device.ts
 │   │   └── therapy.ts
@@ -641,6 +741,7 @@ erDiagram
     User ||--o{ History : "owns therapy logs"
     Device ||--o{ TrDeviceUser : "bound to users"
     Device ||--o{ History : "records therapy logs"
+    User ||--o{ AuditLog : "creates (optional)"
 
     User {
         Int id PK
@@ -682,6 +783,18 @@ erDiagram
         String date
         String mode
         String duration
+        DateTime createdAt
+    }
+
+    AuditLog {
+        Int id PK
+        Int userId FK
+        String username
+        String hospitalName
+        String deviceId
+        String action
+        String details
+        DateTime timestamp
         DateTime createdAt
     }
 ```
