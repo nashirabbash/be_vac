@@ -79,4 +79,32 @@ describe("POST /audit-logs", () => {
     expect(body.count).toBe(2);
     expect(mockPrisma.auditLog.createMany).toHaveBeenCalled();
   });
+
+  it("accepts audit log with null optional fields and returns 200 without 422", async () => {
+    const res = await auditRoutes.handle(
+      new Request("http://localhost/audit-logs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${validToken}`,
+        },
+        body: JSON.stringify([
+          {
+            userId: null,
+            username: null,
+            hospitalName: null,
+            deviceId: null,
+            action: "BLE_DISCONNECT",
+            details: null,
+            timestamp: "2026-08-13T10:00:00Z",
+          },
+        ]),
+      })
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.status).toBe("ok");
+    expect(body.count).toBe(1);
+  });
 });
